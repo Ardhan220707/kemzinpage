@@ -10,8 +10,8 @@ PRD tetap sumber kebutuhan utama. File ini catatan status nyata kode dan databas
 | Tahap 2 | Autentikasi, proteksi route, redirect role, RLS lintas role | Selesai sebagian. Sisa: provisioning akun pengurus |
 | Tahap 3 | Divisi, anggota, akun pengurus | Selesai sebagian. Sisa: manajemen akun pengurus |
 | Tahap 4 | Kegiatan, divisi peserta, sesi, snapshot peserta | Selesai |
-| Tahap 5 | Presensi, ubah status, audit log | Selesai sebagian. Sisa: buka/tutup sesi |
-| Tahap 6 | Dashboard dan rekap | Belum |
+| Tahap 5 | Presensi, ubah status, audit log | Selesai |
+| Tahap 6 | Dashboard dan rekap | Selesai sebagian. Sisa: uji responsif, ringkasan lintas divisi di dashboard Admin |
 | Tahap 7 | QA, deployment, backup | Belum |
 
 # Sudah selesai
@@ -88,12 +88,33 @@ PRD tetap sumber kebutuhan utama. File ini catatan status nyata kode dan databas
 - Helper database `is_active_user()`, `is_admin()`, `current_division_id()` dibuat di `supabase/migrations/202611170000_auth_helpers.sql`.
 - Policy presensi: `supabase/migrations/202611170004_attendance_policies.sql`.
 
+## Batch 5.2 — Buka/tutup sesi dan kunci presensi
+
+- RPC `set_session_status`: hanya Admin, transisi `scheduled → open → closed`.
+- `set_attendance` menolak perubahan bila sesi bukan `open`.
+- Policy `records_update` mensyaratkan sesi `open` (cegah bypass lewat PostgREST langsung).
+- Tombol Buka/Tutup di `/sessions/[id]` dan di daftar sesi `/admin/events`.
+- Tombol presensi nonaktif saat sesi `scheduled`/`closed`, dengan banner status.
+- Migration: `supabase/migrations/202611180001_session_status.sql`.
+- Catatan: tombol aksi non-submit memakai `formNoValidate` agar tidak terblokir validasi `required` form induk.
+
+## Batch 6.1 — Rekapitulasi Admin dan ekspor CSV
+
+- `/admin/recap`: filter kegiatan, divisi, sesi; tabel per sesi; hitungan hadir/tidak hadir/belum; persentase (status `belum` dikecualikan).
+- `/admin/recap/csv`: unduh CSV sesuai filter aktif.
+- Helper query: `src/lib/recap.ts` (`fetchRecap`, `groupBySession`).
+- Dashboard Admin: tautan Rekapitulasi dan daftar aktivitas presensi terbaru dari `attendance_logs`.
+
+## Batch 6.2 — Dashboard pengurus
+
+- Ringkasan kehadiran divisi (hadir/tidak hadir/belum + persentase).
+- Daftar kegiatan aktif yang melibatkan divisinya.
+- Sesi `open` ditandai hijau di daftar sesi.
+
 # Belum selesai
 
 ## Blocker saat ini
 
-- [ ] Jalankan `supabase/migrations/202611170003_set_attendance.sql` di Supabase.
-  Fungsi `set_attendance` belum ada di database, sehingga perubahan status dari Kadiv/Wakadiv gagal tersimpan.
 - [ ] Ganti password 14 akun uji sebelum dipakai di luar lingkungan uji.
 
 ## Tahap 2 — sisa
@@ -110,21 +131,22 @@ PRD tetap sumber kebutuhan utama. File ini catatan status nyata kode dan databas
 
 ## Tahap 5 — sisa
 
-- [ ] Buka/tutup sesi (`scheduled` → `open` → `closed`).
-- [ ] Kunci perubahan presensi saat sesi `closed`.
-- [ ] Kebijakan koreksi Admin setelah sesi ditutup.
+- [x] Buka/tutup sesi (`scheduled` → `open` → `closed`).
+- [x] Kunci perubahan presensi saat sesi `closed`.
+- [ ] Kebijakan koreksi Admin setelah sesi ditutup (butuh keputusan).
 - [ ] Penanganan dua pengurus mengubah presensi bersamaan.
-- [ ] Indikator sesi `scheduled` tidak boleh diisi.
+- [x] Indikator sesi `scheduled` tidak boleh diisi.
 
 ## Tahap 6 — dashboard dan laporan
 
-- [ ] Rekap presensi per kegiatan, sesi, dan divisi.
-- [ ] Persentase kehadiran dengan status `belum` dikecualikan.
-- [ ] Filter kegiatan, sesi, divisi sesuai role.
+- [x] Rekap presensi per kegiatan, sesi, dan divisi.
+- [x] Persentase kehadiran dengan status `belum` dikecualikan.
+- [x] Filter kegiatan, sesi, divisi (halaman rekap Admin).
 - [ ] Ringkasan kehadiran lintas divisi di dashboard Admin.
-- [ ] Aktivitas terbaru di dashboard Admin.
-- [ ] Rekap dan daftar kegiatan relevan di dashboard pengurus.
-- [ ] Tampilan rekap ramah mobile.
+- [x] Aktivitas terbaru di dashboard Admin.
+- [x] Rekap dan daftar kegiatan relevan di dashboard pengurus.
+- [ ] Tampilan rekap ramah mobile (uji dan rapikan).
+- [x] Ekspor CSV rekap (diputuskan masuk MVP).
 
 ## Tahap 7 — QA dan deployment
 

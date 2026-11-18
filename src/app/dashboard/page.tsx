@@ -59,6 +59,32 @@ async function DashboardContent() {
       : Promise.resolve({ data: null }),
   ]);
 
+  const [{ data: activeEvents }, { data: myRecords }] = await Promise.all([
+    profile.division_id
+      ? supabase
+          .from("events")
+          .select("id, name, start_date, event_divisions!inner(division_id)")
+          .eq("status", "active")
+          .eq("event_divisions.division_id", profile.division_id)
+          .order("start_date", { ascending: true, nullsFirst: false })
+      : Promise.resolve({ data: [] as { id: string; name: string; start_date: string | null; event_divisions: unknown[] }[] }),
+    profile.division_id
+      ? supabase
+          .from("session_participants")
+          .select("attendance_records(status)")
+          .eq("division_id", profile.division_id)
+      : Promise.resolve({ data: [] as { attendance_records: { status: string }[] | { status: string } | null }[] }),
+  ]);
+
+  const attendance = { hadir: 0, tidak_hadir: 0, belum: 0 } as Record<string, number>;
+  for (const participant of myRecords ?? []) {
+    const status = one(participant.attendance_records)?.status ?? "belum";
+    attendance[status] = (attendance[status] ?? 0) + 1;
+  }
+  const decided = attendance.hadir + attendance.tidak_hadir;
+  const attendancePercent = decided ? Math.round((attendance.hadir / decided) * 100) : 0;
+  const openSessions = (sessions ?? []).filter((session) => session.status === "open");
+
   return (
     <main className="min-h-screen bg-slate-50 p-6 md:p-10">
       <div className="mx-auto max-w-7xl">
@@ -82,8 +108,50 @@ async function DashboardContent() {
 
         <section className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           <InfoCard icon={Users} title={`Anggota ${division?.name ?? "Divisi"}`} text={`${members?.length ?? 0} anggota terdaftar.`} />
-          <InfoCard icon={CalendarDays} title="Kegiatan" text="Kegiatan divisi akan tampil setelah modul kegiatan selesai." />
-          <InfoCard icon={ClipboardCheck} title="Sesi Presensi" text={`${sessions?.length ?? 0} sesi tersedia untuk divisi Anda.`} />
+          <InfoCard icon={CalendarDays} title="Kegiatan Aktif" text={`${activeEvents?.length ?? 0} kegiatan aktif melibatkan divisi Anda.`} />
+          <InfoCard icon={ClipboardCheck} title="Sesi Terbuka" text={openSessions.length ? `${openSessions.length} sesi sedang dibuka.` : "Belum ada sesi yang dibuka."} />
+        </section>
+
+        <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="mb-4 flex items-center gap-2 font-semibold text-slate-900">
+            <ClipboardCheck size={18} /> Ringkasan Kehadiran Divisi
+          </h2>
+          <div className="grid gap-3 sm:grid-cols-4">
+            <div className="rounded-xl border border-slate-200 p-4">
+              <p className="text-xs font-semibold uppercase text-slate-500">Hadir</p>
+              <p className="mt-1 text-2xl font-bold text-green-700">{attendance.hadir}</p>
+            </div>
+            <div className="rounded-xl border border-slate-200 p-4">
+              <p className="text-xs font-semibold uppercase text-slate-500">Tidak Hadir</p>
+              <p className="mt-1 text-2xl font-bold text-red-700">{attendance.tidak_hadir}</p>
+            </div>
+            <div className="rounded-xl border border-slate-200 p-4">
+              <p className="text-xs font-semibold uppercase text-slate-500">Belum</p>
+              <p className="mt-1 text-2xl font-bold text-slate-700">{attendance.belum}</p>
+            </div>
+            <div className="rounded-xl border border-slate-200 p-4">
+              <p className="text-xs font-semibold uppercase text-slate-500">Kehadiran</p>
+              <p className="mt-1 text-2xl font-bold text-blue-700">{attendancePercent}%</p>
+            </div>
+          </div>
+          <p className="mt-3 text-xs text-slate-400">Persentase hanya menghitung status yang sudah diputuskan (Hadir vs Tidak Hadir).</p>
+        </section>
+
+        <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="mb-4 flex items-center gap-2 font-semibold text-slate-900">
+            <CalendarDays size={18} /> Kegiatan Aktif Divisi
+          </h2>
+          {!activeEvents?.length && <p className="text-sm text-slate-500">Belum ada kegiatan aktif untuk divisi Anda.</p>}
+          <ul className="space-y-2">
+            {activeEvents?.map((event) => (
+              <li key={event.id} className="rounded-lg border border-slate-200 px-4 py-3 text-sm">
+                <p className="font-semibold text-slate-800">{event.name}</p>
+                <p className="text-slate-500">
+                  {event.start_date ? new Date(event.start_date).toLocaleString("id-ID") : "Jadwal belum ditentukan"}
+                </p>
+              </li>
+            ))}
+          </ul>
         </section>
 
         <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -120,7 +188,7 @@ async function DashboardContent() {
                     <span className="font-semibold text-slate-800">{session.session_name}</span>
                     <span className="ml-2 text-slate-500">{one(session.events)?.name ?? "Kegiatan"}</span>
                   </span>
-                  <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold uppercase text-slate-600">{session.status}</span>
+                  <span className={`rounded px-2 py-0.5 text-xs font-semibold uppercase ${session.status === "open" ? "bg-green-50 text-green-700" : "bg-slate-100 text-slate-600"}`}>{session.status}</span>
                 </a>
               </li>
             ))}

@@ -56,6 +56,20 @@ async function AdminContent() {
     countOf(supabase, "attendance_sessions"),
   ]);
 
+  const { data: logs } = await supabase
+    .from("attendance_logs")
+    .select("id, old_status, new_status, changed_at, changed_by")
+    .order("changed_at", { ascending: false })
+    .limit(8);
+
+  const changerIds = [...new Set((logs ?? []).map((log) => log.changed_by))];
+  const { data: changers } = changerIds.length
+    ? await supabase.from("profiles").select("id, full_name").in("id", changerIds)
+    : { data: [] as { id: string; full_name: string | null }[] };
+  const changerName = new Map((changers ?? []).map((row) => [row.id, row.full_name]));
+
+  const STATUS_LABEL: Record<string, string> = { hadir: "Hadir", tidak_hadir: "Tidak Hadir", belum: "Belum" };
+
   const stats = [
     { label: "Total Divisi", value: divisions, icon: Users },
     { label: "Total Anggota", value: members, icon: Users },
@@ -135,17 +149,45 @@ async function AdminContent() {
               Kelola Kegiatan
               <ChevronRight size={17} className="text-slate-400" />
             </a>
+            <a
+              href="/admin/recap"
+              className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 hover:border-blue-300 hover:bg-blue-50"
+            >
+              Rekapitulasi Presensi
+              <ChevronRight size={17} className="text-slate-400" />
+            </a>
           </div>
         </div>
 
         <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6">
           <h2 className="text-lg font-semibold text-slate-900">
-            Aktivitas Admin
+            Aktivitas Presensi Terbaru
           </h2>
 
-          <p className="mt-2 text-sm text-slate-500">
-            Belum ada aktivitas yang tercatat.
-          </p>
+          {!logs?.length && (
+            <p className="mt-2 text-sm text-slate-500">
+              Belum ada aktivitas yang tercatat.
+            </p>
+          )}
+
+          <ul className="mt-4 space-y-2">
+            {logs?.map((log) => (
+              <li
+                key={log.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-100 px-3 py-2 text-sm"
+              >
+                <span className="text-slate-700">
+                  {STATUS_LABEL[log.old_status] ?? log.old_status}{" "}
+                  <span className="text-slate-400">menjadi</span>{" "}
+                  {STATUS_LABEL[log.new_status] ?? log.new_status}
+                </span>
+                <span className="text-slate-500">
+                  {changerName.get(log.changed_by) ?? "Pengguna"} ·{" "}
+                  {new Date(log.changed_at).toLocaleString("id-ID")}
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
     </main>
