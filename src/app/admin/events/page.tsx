@@ -1,8 +1,8 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { ArrowLeft, CalendarDays, Plus, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, CalendarDays, Lock, LockOpen, Plus, Save, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { createEvent, createSession, deleteSession, updateEvent } from "./actions";
+import { changeSessionStatus, createEvent, createSession, deleteSession, updateEvent } from "./actions";
 
 const STATUSES = ["draft", "active", "completed", "cancelled"] as const;
 
@@ -104,15 +104,27 @@ async function EventsContent({ searchParams }: { searchParams: SearchParams }) {
                           <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold uppercase">{session.status}</span>
                           <span>{session.session_participants[0]?.count ?? 0} peserta</span>
                         </span>
-                        <button
-                          formAction={deleteSession}
-                          name="session_id"
-                          value={session.id}
-                          title="Hapus sesi"
-                          className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50"
-                        >
-                          <Trash2 size={14} /> Hapus
-                        </button>
+                        <span className="flex items-center gap-2">
+                          {session.status === "scheduled" && (
+                            <button formAction={changeSessionStatus} name="session_action" value={`${session.id}:open`} title="Buka sesi" className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50">
+                              <LockOpen size={13} /> Buka
+                            </button>
+                          )}
+                          {session.status === "open" && (
+                            <button formAction={changeSessionStatus} name="session_action" value={`${session.id}:closed`} title="Tutup sesi" className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100">
+                              <Lock size={13} /> Tutup
+                            </button>
+                          )}
+                          <button
+                            formAction={deleteSession}
+                            name="session_id"
+                            value={session.id}
+                            title="Hapus sesi"
+                            className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50"
+                          >
+                            <Trash2 size={14} /> Hapus
+                          </button>
+                        </span>
                       </li>
                     ))}
                   </ul>

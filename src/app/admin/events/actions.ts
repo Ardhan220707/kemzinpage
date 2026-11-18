@@ -41,6 +41,18 @@ export async function createEvent(formData: FormData) {
   redirect("/admin/events?saved=1");
 }
 
+export async function changeSessionStatus(formData: FormData) {
+  const [id, status] = String(formData.get("session_action") ?? "").split(":");
+  if (!id || !["open", "closed"].includes(status)) redirect("/admin/events?error=session");
+
+  const supabase = await requireAdmin();
+  const { error } = await supabase.rpc("set_session_status", {
+    p_session_id: id,
+    p_status: status,
+  });
+  redirect(error ? "/admin/events?error=session" : "/admin/events?saved=1");
+}
+
 export async function deleteSession(formData: FormData) {
   const id = String(formData.get("session_id") ?? "");
   if (!id) redirect("/admin/events?error=session");
