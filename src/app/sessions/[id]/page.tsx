@@ -1,9 +1,9 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ClipboardCheck, History } from "lucide-react";
+import { ArrowLeft, ClipboardCheck, History, Lock, LockOpen } from "lucide-react";
 import { requireStaff } from "@/lib/require-admin";
 import { one } from "@/lib/one";
-import { updateAttendance } from "./actions";
+import { changeSessionStatus, updateAttendance } from "./actions";
 
 const LABELS: Record<string, string> = {
   hadir: "Hadir",
@@ -67,6 +67,7 @@ async function SessionContent({ params, searchParams }: { params: Params; search
   const changerName = new Map((changers ?? []).map((row) => [row.id, row.full_name]));
 
   const backHref = profile.role === "admin" ? "/admin/events" : "/dashboard";
+  const isOpen = session.status === "open";
 
   return (
     <main className="min-h-screen bg-slate-50 p-6 md:p-10">
@@ -80,6 +81,22 @@ async function SessionContent({ params, searchParams }: { params: Params; search
             Status sesi: <span className="font-semibold uppercase">{session.status}</span>
             {profile.role !== "admin" && " · Anda hanya dapat mengubah presensi divisi Anda."}
           </p>
+          {profile.role === "admin" && (
+            <form action={changeSessionStatus} className="mt-4">
+              <input type="hidden" name="session_id" value={session.id} />
+              {session.status === "scheduled" && (
+                <button name="status" value="open" className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"><LockOpen size={16} /> Buka Sesi</button>
+              )}
+              {session.status === "open" && (
+                <button name="status" value="closed" className="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"><Lock size={16} /> Tutup Sesi</button>
+              )}
+            </form>
+          )}
+          {!isOpen && (
+            <p className="mt-4 flex items-center gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-700">
+              <Lock size={16} /> {session.status === "scheduled" ? "Presensi terkunci sampai sesi dibuka Admin." : "Sesi sudah ditutup. Presensi terkunci."}
+            </p>
+          )}
         </div>
 
         <div className="mb-6 grid gap-3 sm:grid-cols-4">
@@ -95,7 +112,7 @@ async function SessionContent({ params, searchParams }: { params: Params; search
           </div>
         </div>
 
-        {error && <p className="mb-5 rounded-lg bg-red-50 p-3 text-sm text-red-600">Presensi gagal diperbarui. Coba lagi.</p>}
+        {error && <p className="mb-5 rounded-lg bg-red-50 p-3 text-sm text-red-600">{error === "status" ? "Status sesi gagal diubah. Coba lagi." : "Presensi gagal diperbarui. Coba lagi."}</p>}
         {saved && <p className="mb-5 rounded-lg bg-green-50 p-3 text-sm text-green-700">Presensi tersimpan dan tercatat di log.</p>}
         {participantsError && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-600">Daftar peserta gagal dimuat.</p>}
         {!participantsError && !records.length && <p className="rounded-2xl bg-white p-6 text-sm text-slate-500">Sesi ini belum memiliki peserta.</p>}
@@ -131,7 +148,7 @@ async function SessionContent({ params, searchParams }: { params: Params; search
                               key={status}
                               name="status"
                               value={status}
-                              disabled={record.status === status}
+                              disabled={!isOpen || record.status === status}
                               className="rounded-lg border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
                             >
                               {LABELS[status]}
