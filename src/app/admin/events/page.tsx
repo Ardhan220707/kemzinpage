@@ -91,7 +91,7 @@ async function EventsContent({ searchParams }: { searchParams: SearchParams }) {
                     {divisions?.map((division) => <label key={division.id} className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700"><input type="checkbox" name="division_ids" value={division.id} defaultChecked={selected.has(division.id)} /> {division.name}</label>)}
                   </div>
                 </fieldset>
-                <button className="inline-flex items-center gap-2 rounded-lg border border-blue-200 px-4 py-2 font-semibold text-blue-700 hover:bg-blue-50"><Save size={17} /> Simpan</button>
+                <button formNoValidate className="inline-flex items-center gap-2 rounded-lg border border-blue-200 px-4 py-2 font-semibold text-blue-700 hover:bg-blue-50"><Save size={17} /> Simpan</button>
 
                 <div className="border-t border-slate-200 pt-4">
                   <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900"><CalendarDays size={17} /> Sesi Presensi</h3>
@@ -106,17 +106,18 @@ async function EventsContent({ searchParams }: { searchParams: SearchParams }) {
                         </span>
                         <span className="flex items-center gap-2">
                           {session.status === "scheduled" && (
-                            <button formAction={changeSessionStatus} name="session_action" value={`${session.id}:open`} title="Buka sesi" className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50">
+                            <button formAction={changeSessionStatus} formNoValidate name="session_action" value={`${session.id}:open`} title="Buka sesi" className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50">
                               <LockOpen size={13} /> Buka
                             </button>
                           )}
                           {session.status === "open" && (
-                            <button formAction={changeSessionStatus} name="session_action" value={`${session.id}:closed`} title="Tutup sesi" className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100">
+                            <button formAction={changeSessionStatus} formNoValidate name="session_action" value={`${session.id}:closed`} title="Tutup sesi" className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100">
                               <Lock size={13} /> Tutup
                             </button>
                           )}
                           <button
                             formAction={deleteSession}
+                            formNoValidate
                             name="session_id"
                             value={session.id}
                             title="Hapus sesi"
