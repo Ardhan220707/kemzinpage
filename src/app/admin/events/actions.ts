@@ -42,7 +42,8 @@ export async function createEvent(formData: FormData) {
 }
 
 export async function changeSessionStatus(formData: FormData) {
-  const [id, status] = String(formData.get("session_action") ?? "").split(":");
+  const id = String(formData.get("session_id") ?? "");
+  const status = String(formData.get("status") ?? "");
   if (!id || !["open", "closed"].includes(status)) redirect("/admin/events?error=session");
 
   const supabase = await requireAdmin();

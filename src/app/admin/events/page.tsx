@@ -14,7 +14,10 @@ export default function EventsPage({ searchParams }: { searchParams: SearchParam
 
 function toLocalInput(value: string | null) {
   if (!value) return "";
-  return new Date(value).toISOString().slice(0, 16);
+  const d = new Date(value);
+  // pakai UTC offset manual agar tidak bergantung locale runtime
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 async function EventsContent({ searchParams }: { searchParams: SearchParams }) {
@@ -47,7 +50,7 @@ async function EventsContent({ searchParams }: { searchParams: SearchParams }) {
               <label className="text-sm font-medium text-slate-700">Nama kegiatan<input name="name" required className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal outline-none focus:border-blue-500" /></label>
               <label className="text-sm font-medium text-slate-700">Lokasi<input name="location" className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal outline-none focus:border-blue-500" /></label>
               <label className="text-sm font-medium text-slate-700 md:col-span-2">Deskripsi<input name="description" className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal outline-none focus:border-blue-500" /></label>
-              <label className="text-sm font-medium text-slate-700">Status<select name="status" className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal outline-none focus:border-blue-500">{STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
+              <label className="text-sm font-medium text-slate-700">Status<select name="status" className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal outline-none focus:border-blue-500">{STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}</select></label>
               <div className="grid grid-cols-2 gap-4">
                 <label className="text-sm font-medium text-slate-700">Mulai<input type="datetime-local" name="start_date" className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal outline-none focus:border-blue-500" /></label>
                 <label className="text-sm font-medium text-slate-700">Selesai<input type="datetime-local" name="end_date" className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal outline-none focus:border-blue-500" /></label>
@@ -56,15 +59,15 @@ async function EventsContent({ searchParams }: { searchParams: SearchParams }) {
             <fieldset>
               <legend className="mb-2 text-sm font-medium text-slate-700">Divisi peserta</legend>
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {divisions?.map((division) => <label key={division.id} className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700"><input type="checkbox" name="division_ids" value={division.id} /> {division.name}</label>)}
+                {divisions?.map((d) => <label key={d.id} className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700"><input type="checkbox" name="division_ids" value={d.id} /> {d.name}</label>)}
               </div>
             </fieldset>
             <button className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700"><Plus size={17} /> Tambah Kegiatan</button>
           </form>
         </section>
 
-        {error && <p className="mb-5 rounded-lg bg-red-50 p-3 text-sm text-red-600">Kegiatan gagal disimpan. Periksa nama divisi peserta dan data kegiatan.</p>}
-        {saved && <p className="mb-5 rounded-lg bg-green-50 p-3 text-sm text-green-700">Kegiatan tersimpan.</p>}
+        {error && <p className="mb-5 rounded-lg bg-red-50 p-3 text-sm text-red-600">Gagal disimpan. Periksa data dan coba lagi.</p>}
+        {saved && <p className="mb-5 rounded-lg bg-green-50 p-3 text-sm text-green-700">Tersimpan.</p>}
         {eventsError && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-600">Daftar kegiatan gagal dimuat.</p>}
         {!eventsError && !events?.length && <p className="rounded-2xl bg-white p-6 text-sm text-slate-500">Belum ada kegiatan.</p>}
 
@@ -72,27 +75,31 @@ async function EventsContent({ searchParams }: { searchParams: SearchParams }) {
           {events?.map((event) => {
             const selected = new Set(event.event_divisions.map((row) => row.division_id));
             return (
-              <form key={event.id} action={updateEvent} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <input type="hidden" name="id" value={event.id} />
-                <div className="flex items-center gap-2 text-sm font-semibold text-slate-500"><CalendarDays size={17} /> {event.status}</div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <label className="text-sm font-medium text-slate-700">Nama kegiatan<input name="name" required defaultValue={event.name} className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal outline-none focus:border-blue-500" /></label>
-                  <label className="text-sm font-medium text-slate-700">Lokasi<input name="location" defaultValue={event.location ?? ""} className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal outline-none focus:border-blue-500" /></label>
-                  <label className="text-sm font-medium text-slate-700 md:col-span-2">Deskripsi<input name="description" defaultValue={event.description ?? ""} className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal outline-none focus:border-blue-500" /></label>
-                  <label className="text-sm font-medium text-slate-700">Status<select name="status" defaultValue={event.status} className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal outline-none focus:border-blue-500">{STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
-                  <div className="grid grid-cols-2 gap-4">
-                    <label className="text-sm font-medium text-slate-700">Mulai<input type="datetime-local" name="start_date" defaultValue={toLocalInput(event.start_date)} className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal outline-none focus:border-blue-500" /></label>
-                    <label className="text-sm font-medium text-slate-700">Selesai<input type="datetime-local" name="end_date" defaultValue={toLocalInput(event.end_date)} className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal outline-none focus:border-blue-500" /></label>
+              <div key={event.id} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                {/* Form edit kegiatan */}
+                <form action={updateEvent} className="space-y-4">
+                  <input type="hidden" name="id" value={event.id} />
+                  <div className="flex items-center gap-2 text-sm font-semibold text-slate-500"><CalendarDays size={17} /> {event.status}</div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <label className="text-sm font-medium text-slate-700">Nama kegiatan<input name="name" required defaultValue={event.name} className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal outline-none focus:border-blue-500" /></label>
+                    <label className="text-sm font-medium text-slate-700">Lokasi<input name="location" defaultValue={event.location ?? ""} className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal outline-none focus:border-blue-500" /></label>
+                    <label className="text-sm font-medium text-slate-700 md:col-span-2">Deskripsi<input name="description" defaultValue={event.description ?? ""} className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal outline-none focus:border-blue-500" /></label>
+                    <label className="text-sm font-medium text-slate-700">Status<select name="status" defaultValue={event.status} className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal outline-none focus:border-blue-500">{STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}</select></label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <label className="text-sm font-medium text-slate-700">Mulai<input type="datetime-local" name="start_date" defaultValue={toLocalInput(event.start_date)} className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal outline-none focus:border-blue-500" /></label>
+                      <label className="text-sm font-medium text-slate-700">Selesai<input type="datetime-local" name="end_date" defaultValue={toLocalInput(event.end_date)} className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal outline-none focus:border-blue-500" /></label>
+                    </div>
                   </div>
-                </div>
-                <fieldset>
-                  <legend className="mb-2 text-sm font-medium text-slate-700">Divisi peserta</legend>
-                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                    {divisions?.map((division) => <label key={division.id} className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700"><input type="checkbox" name="division_ids" value={division.id} defaultChecked={selected.has(division.id)} /> {division.name}</label>)}
-                  </div>
-                </fieldset>
-                <button formNoValidate className="inline-flex items-center gap-2 rounded-lg border border-blue-200 px-4 py-2 font-semibold text-blue-700 hover:bg-blue-50"><Save size={17} /> Simpan</button>
+                  <fieldset>
+                    <legend className="mb-2 text-sm font-medium text-slate-700">Divisi peserta</legend>
+                    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                      {divisions?.map((d) => <label key={d.id} className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700"><input type="checkbox" name="division_ids" value={d.id} defaultChecked={selected.has(d.id)} /> {d.name}</label>)}
+                    </div>
+                  </fieldset>
+                  <button className="inline-flex items-center gap-2 rounded-lg border border-blue-200 px-4 py-2 font-semibold text-blue-700 hover:bg-blue-50"><Save size={17} /> Simpan</button>
+                </form>
 
+                {/* Sesi */}
                 <div className="border-t border-slate-200 pt-4">
                   <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900"><CalendarDays size={17} /> Sesi Presensi</h3>
                   {!event.attendance_sessions.length && <p className="mb-3 text-sm text-slate-500">Belum ada sesi.</p>}
@@ -106,38 +113,43 @@ async function EventsContent({ searchParams }: { searchParams: SearchParams }) {
                         </span>
                         <span className="flex items-center gap-2">
                           {session.status === "scheduled" && (
-                            <button formAction={changeSessionStatus} formNoValidate name="session_action" value={`${session.id}:open`} title="Buka sesi" className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50">
-                              <LockOpen size={13} /> Buka
-                            </button>
+                            <form action={changeSessionStatus}>
+                              <input type="hidden" name="session_id" value={session.id} />
+                              <input type="hidden" name="status" value="open" />
+                              <button className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50">
+                                <LockOpen size={13} /> Buka
+                              </button>
+                            </form>
                           )}
                           {session.status === "open" && (
-                            <button formAction={changeSessionStatus} formNoValidate name="session_action" value={`${session.id}:closed`} title="Tutup sesi" className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100">
-                              <Lock size={13} /> Tutup
-                            </button>
+                            <form action={changeSessionStatus}>
+                              <input type="hidden" name="session_id" value={session.id} />
+                              <input type="hidden" name="status" value="closed" />
+                              <button className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100">
+                                <Lock size={13} /> Tutup
+                              </button>
+                            </form>
                           )}
-                          <button
-                            formAction={deleteSession}
-                            formNoValidate
-                            name="session_id"
-                            value={session.id}
-                            title="Hapus sesi"
-                            className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50"
-                          >
-                            <Trash2 size={14} /> Hapus
-                          </button>
+                          <form action={deleteSession}>
+                            <input type="hidden" name="session_id" value={session.id} />
+                            <button className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50">
+                              <Trash2 size={14} /> Hapus
+                            </button>
+                          </form>
                         </span>
                       </li>
                     ))}
                   </ul>
-                  <div className="grid gap-3 md:grid-cols-[1fr_1fr_1fr_auto] md:items-end">
+                  {/* Form buat sesi — form sendiri supaya required tidak ganggu form lain */}
+                  <form action={createSession} className="grid gap-3 md:grid-cols-[1fr_1fr_1fr_auto] md:items-end">
                     <input type="hidden" name="event_id" value={event.id} />
                     <label className="text-sm font-medium text-slate-700">Nama sesi<input name="session_name" required placeholder="Sesi 1" className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal outline-none focus:border-blue-500" /></label>
                     <label className="text-sm font-medium text-slate-700">Mulai<input type="datetime-local" name="start_time" className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal outline-none focus:border-blue-500" /></label>
                     <label className="text-sm font-medium text-slate-700">Selesai<input type="datetime-local" name="end_time" className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal outline-none focus:border-blue-500" /></label>
-                    <button formAction={createSession} className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700"><Plus size={17} /> Buat Sesi</button>
-                  </div>
+                    <button className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700"><Plus size={17} /> Buat Sesi</button>
+                  </form>
                 </div>
-              </form>
+              </div>
             );
           })}
         </section>
